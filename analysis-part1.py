@@ -44,11 +44,11 @@ def apply_selection_function(messages, traces):
 
     for i, m in enumerate(messages):
         for k in keys:
-            mbin = format(m[0], "04b")
-            kbin = format(k, "04b")
+            mbin = format(m[0], "04b")[::-1]    # Reverse the string to least significant bit at the end
+            kbin = format(k, "04b")[::-1] # Reverse the string
 
-            selection_value = (int(mbin[3]) + int(kbin[3])) * (int(mbin[2]) + int(kbin[2])) + int(mbin[2]) + int(
-                mbin[1])
+            selection_value = (int(mbin[1]) + int(kbin[1])) * (int(mbin[2]) + int(kbin[2])) + int(mbin[2]) + int(
+                mbin[3])
             selection_value = selection_value % 2
 
             if selection_value == 0:
@@ -62,20 +62,17 @@ def apply_selection_function(messages, traces):
 
 
 def apply_second_selection_function(messages, traces):
-    keys = range(0, 4)
+    keys = range(0, 16)
 
-    values_zero = numpy.zeros([len(messages), 4])
-    idx_zero = [0, 0, 0, 0]
-    values_one = numpy.zeros([len(messages), 4])
-    idx_one = [0, 0, 0, 0]
-
-    skewness_zero = [0, 0, 0, 0]
-    skewness_one = [0, 0, 0, 0]
+    values_zero = numpy.zeros([len(messages), 16])
+    idx_zero = [0] * 16
+    values_one = numpy.zeros([len(messages), 16])
+    idx_one = [0] * 16
 
     for i, m in enumerate(messages):
         for k in keys:
-            mbin = format(m[0], "04b")
-            kbin = format(k, "04b")
+            mbin = format(m[0], "04b")[::-1]
+            kbin = format(k, "04b")[::-1]
 
             selection_value = int(mbin[0] + kbin[0]) * int((mbin[2] + kbin[2])) * int((mbin[1] + kbin[1]))
             selection_value += int((mbin[0] + kbin[0])) * int((mbin[3] + kbin[3])) * int((mbin[1] + kbin[1]))
@@ -93,12 +90,6 @@ def apply_second_selection_function(messages, traces):
                 values_one[idx_one[k]][k] = traces[i][0]
                 idx_one[k] += 1
 
-            skewness_zero[k] = scipy.stats.skew(values_zero[:, k])
-            skewness_one[k] = scipy.stats.skew(values_one[:, k])
-
-    print(skewness_one)
-    print(skewness_zero)
-
     return values_zero, values_one
 
 
@@ -115,7 +106,25 @@ def selection_function(messages, traces):
     for i in range(0, 4):
         # Correct key should be 2
         key_i_zero_traces = zero_values[:, i] #Get column of key with value i
+        key_i_zero_traces = list(filter(lambda a: a != 0, key_i_zero_traces))
 
+        key_i_one_traces = one_values[:, i]
+        key_i_one_traces = list(filter(lambda a: a != 0, key_i_one_traces))
+
+        skewness_zero = scipy.stats.skew(numpy.asarray(key_i_zero_traces))
+        skewness_one = scipy.stats.skew(numpy.asarray(key_i_one_traces))
+        skewness_delta = abs(skewness_one - skewness_zero)
+
+        results.append((skewness_delta, i))
+
+    results = sorted(results, key=lambda tup: tup[1], reverse=True)
+    print(results[0])
+
+    zero_values, one_values = apply_second_selection_function(messages, traces)
+    results = []
+
+    for i in range(0, 16):
+        key_i_zero_traces = zero_values[:, i]  # Get column of key with value i
         key_i_one_traces = one_values[:, i]
 
         skewness_zero = scipy.stats.skew(key_i_zero_traces)
@@ -124,28 +133,8 @@ def selection_function(messages, traces):
 
         results.append((skewness_delta, i))
 
-    results = sorted(results, key=lambda tup: tup[1], reverse=True)
+    results = sorted(results, key=lambda tup: tup[1])
     print(results)
-
-
-
-    # zero_values, one_values = apply_second_selection_function(messages, traces)
-    # results = []
-    #
-    # for i in range(0, 4):
-    #     key_i_zero_traces = zero_values[:, i]  # Get column of key with value i
-    #     print(key_i_zero_traces)
-    #
-    #     key_i_one_traces = one_values[:, i]
-    #
-    #     skewness_zero = scipy.stats.skew(key_i_zero_traces)
-    #     skewness_one = scipy.stats.skew(key_i_one_traces)
-    #     skewness_delta = abs(skewness_one - skewness_zero)
-    #
-    #     results.append((skewness_delta, i))
-    #
-    # results = sorted(results, key=lambda tup: tup[1])
-    # print(results)
 
 messages, traces = read_data()
 selection_function(messages, traces)
