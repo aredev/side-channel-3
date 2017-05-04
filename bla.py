@@ -204,13 +204,13 @@ def multivariate_misclassification(mu_t0, mu_t1, cov_t0, cov_t1, test0, test1):
     incorrect1 = 0
 
     for t0 in test0:
-        print(t0)
-        ratio0 = mvn0.pdf(t0)
-        ratio1 = mvn1.pdf(t0)
+        print(mvn0.pdf(t0))
+        print(mvn1.pdf(t0))
 
-        for r in ratio:
-            if r > 1:
-                incorrect0 += 1
+        # ratio = mvn0.pdf(t0)/mvn1.pdf(t0)
+
+        # if r > 1:
+        #     incorrect0 += 1
 
     for t1 in test1:
         ratio = mvn0.pdf(t1) / mvn1.pdf(t1)
@@ -231,4 +231,4 @@ train0, train1, test0, test1 = read_data()
 reduced_train0, reduced_train1, reduced_test0, reduced_test1 = set_up_multivariate_template(train0, train1, test0, test1)
 m = 500
 mu_train0, mu_train1, sigma_train0, sigma_train1 = build_multivariate_template(reduced_train0, reduced_train1, m)
-multivariate_misclassification(mu_train0, mu_train1, sigma_train0, sigma_train1, test0, test1)
+multivariate_misclassification(mu_train0, mu_train1, sigma_train0, sigma_train1, reduced_test0, reduced_test1)
