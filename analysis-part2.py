@@ -47,14 +47,34 @@ def build_reduced_template(train0, train1):
 
 
 def vector_substraction(v1, v2):
+    """
+    Substract two vectors
+    :param v1: 
+    :param v2: 
+    :return: 
+    """
     return [a_i - b_i for a_i, b_i in zip(v1, v2)]
 
 
 def vector_addition(v1, v2):
+    """
+    Add two vectors
+    :param v1: 
+    :param v2: 
+    :return: 
+    """
     return [a_i + b_i for a_i, b_i in zip(v1, v2)]
 
 
 def reduced_template_matching(t0, test0, t1, test1):
+    """
+    Match according to the reduced template
+    :param t0: 
+    :param test0: 
+    :param t1: 
+    :param test1: 
+    :return: 
+    """
     incorrect0 = 0
     incorrect1 = 0
 
@@ -104,12 +124,15 @@ def build_univariate_template(train0, train1):
     mu0, sigma0 = compute_mle_params(train0[:, poiIndex])
     mu1, sigma1 = compute_mle_params(train1[:, poiIndex])
 
-    print(mu0, sigma0, mu1, sigma1)
-
     return mu0, sigma0, mu1, sigma1
 
 
 def compute_mle_params(poi):
+    """
+    Compute the params for the Maximum Likelihood Estimation
+    :param poi: 
+    :return: 
+    """
     mu = numpy.sum(poi)/len(poi)
     sigma_sq = sum((poi - mu)**2)*1/(len(poi)-1)
 
@@ -118,6 +141,16 @@ def compute_mle_params(poi):
 
 
 def univariate_test_templates(mu0, sigma0, mu1, sigma1, test0, test1):
+    """
+    Match the values according to the univariate template
+    :param mu0: 
+    :param sigma0: 
+    :param mu1: 
+    :param sigma1: 
+    :param test0: 
+    :param test1: 
+    :return: 
+    """
     incorrect0 = 0
     incorrect1 = 0
 
@@ -152,7 +185,15 @@ def univariate_template_matching(rtest, mu0, sigma0, mu1, sigma1, bigger):
         return list(ratios).count(False)
 
 
-def build_multivariate_template(train0, train1):
+def set_up_multivariate_template(train0, train1, test0, test1):
+    """
+    Set up the multivariate template
+    :param train0: 
+    :param train1: 
+    :param test0: 
+    :param test1: 
+    :return: 
+    """
     mean_o0 = compute_mean_vector(train0)
     mean_o1 = compute_mean_vector(train1)
     tbar = vector_addition(mean_o0, mean_o1)
@@ -160,23 +201,97 @@ def build_multivariate_template(train0, train1):
     mean_o0subtbar = [a_i - b_i for a_i, b_i in zip(mean_o0, tbar)]
     mean_o1subtbar = [a_i - b_i for a_i, b_i in zip(mean_o1, tbar)]
 
-    mean_o0subtbar = numpy.asmatrix(mean_o0subtbar).dot(numpy.asmatrix(mean_o0subtbar).transpose())
-    print(mean_o0subtbar)
-    mean_o1subtbar = mean_o1subtbar * numpy.transpose(mean_o1subtbar)
+    mean_o0subtbar = numpy.multiply(mean_o0subtbar, numpy.asmatrix(mean_o0subtbar).transpose())
+    mean_o1subtbar = numpy.multiply(mean_o1subtbar, numpy.asmatrix(mean_o1subtbar).transpose())
 
-    twob = mean_o0subtbar+mean_o1subtbar
-    print(len(twob))
-    # print(twob)
-    #
-    #
-    # print(b)
-    # svd = numpy.linalg.svd(b)
-    # print(svd)
+    twob = numpy.add(mean_o0subtbar, mean_o1subtbar)
+    b = numpy.multiply(0.5, twob)
+    u, s, v = numpy.linalg.svd(b)
+
+    m = 501 # Random choice for m
+    u_reduced = u[:, 1:m]
+
+    # Projecting datasets
+    projected_train0 = numpy.dot(train0, u_reduced)
+    projected_train1 = numpy.dot(train1, u_reduced)
+    projected_test0 = numpy.dot(test0, u_reduced)
+    projected_test1 = numpy.dot(test1, u_reduced)
+
+    return projected_train0, projected_train1, projected_test0, projected_test1
+
+
+def build_multivariate_template(ptrain0, ptrain1, m):
+    """
+    Build the multivariate template
+    :param ptrain0: 
+    :param ptrain1: 
+    :param m: 
+    :return: 
+    """
+    mu_train0 = []
+    mu_train1 = []
+
+    for c in range(m):
+        mu_train0.append(compute_mean_vector(ptrain0[:, c])[0])
+
+    for c in range(m):
+        mu_train1.append(compute_mean_vector(ptrain1[:, c])[0])
+
+
+    sigma_train0 = numpy.cov(ptrain0, rowvar=False)
+    sigma_train1 = numpy.cov(ptrain1, rowvar=False)
+    return mu_train0, mu_train1, sigma_train0, sigma_train1
+
+
+def multivariate_misclassification(mu_t0, mu_t1, cov_t0, cov_t1, test0, test1, m):
+    """
+    Compute the misclassification rate using the multivariate template
+    :param mu_t0: 
+    :param mu_t1: 
+    :param cov_t0: 
+    :param cov_t1: 
+    :param test0: 
+    :param test1: 
+    :return: 
+    """
+
+    incorrect0 = 0
+    incorrect1 = 0
+
+    print(len(mu_t0))
+
+    for i in range(m):
+        tsubmu0 = vector_substraction(test0[i], mu_t0)[0]
+        tsubmu0_transposed = tsubmu0.transpose()
+        sigma0_inv = numpy.asmatrix(cov_t0).I
+
+        tsubmu1 = vector_substraction(test0[i], mu_t1)[0]
+        tsubmu1_transposed = tsubmu1.transpose()
+        sigma1_inv = numpy.asmatrix(cov_t1).I
+
+        zero_value = numpy.multiply(0.5, tsubmu0_transposed)
+        zero_value = numpy.dot(zero_value, sigma0_inv)
+        zero_value = numpy.dot(zero_value, tsubmu0)
+        print(zero_value.shape)
+
+
+    for t1 in test1:
+        ratio = mvn0.pdf(t1) / mvn1.pdf(t1)
+
+        for r in ratio:
+            if r < 1:
+                incorrect1 += 1
+
+    print(incorrect0 / (len(test0)*1301))
+    print(incorrect1 / (len(test1)*1301))
 
 
 train0, train1, test0, test1 = read_data()
-# t0, t1 = build_reduced_template(train0, train1)
-# reduced_template_matching(t0, test0, t1, test1)
+t0, t1 = build_reduced_template(train0, train1)
+reduced_template_matching(t0, test0, t1, test1)
 mu0, sigma0, mu1, sigma1 = build_univariate_template(train0, train1)
 univariate_test_templates(mu0, sigma0, mu1, sigma1, test0, test1)
-# build_multivariate_template(train0, train1)
+reduced_train0, reduced_train1, reduced_test0, reduced_test1 = set_up_multivariate_template(train0, train1, test0, test1)
+m = 500
+mu_train0, mu_train1, sigma_train0, sigma_train1 = build_multivariate_template(reduced_train0, reduced_train1, m)
+multivariate_misclassification(mu_train0, mu_train1, sigma_train0, sigma_train1, reduced_test0, reduced_test1, m)
