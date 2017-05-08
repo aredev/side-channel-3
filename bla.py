@@ -224,11 +224,11 @@ def multivariate_misclassification(mu_t0, mu_t1, cov_t0, cov_t1, test0, test1):
 
 
 train0, train1, test0, test1 = read_data()
-# t0, t1 = build_reduced_template(train0, train1)
-# reduced_template_matching(t0, test0, t1, test1)
-# mu0, sigma0, mu1, sigma1 = build_univariate_template(train0, train1)
-# univariate_test_templates(mu0, sigma0, mu1, sigma1, test0, test1)
-reduced_train0, reduced_train1, reduced_test0, reduced_test1 = set_up_multivariate_template(train0, train1, test0, test1)
-m = 500
-mu_train0, mu_train1, sigma_train0, sigma_train1 = build_multivariate_template(reduced_train0, reduced_train1, m)
-multivariate_misclassification(mu_train0, mu_train1, sigma_train0, sigma_train1, reduced_test0, reduced_test1)
+t0, t1 = build_reduced_template(train0, train1)
+reduced_template_matching(t0, test0, t1, test1)
+mu0, sigma0, mu1, sigma1 = build_univariate_template(train0, train1)
+univariate_test_templates(mu0, sigma0, mu1, sigma1, test0, test1)
+# reduced_train0, reduced_train1, reduced_test0, reduced_test1 = set_up_multivariate_template(train0, train1, test0, test1)
+# m = 500
+# mu_train0, mu_train1, sigma_train0, sigma_train1 = build_multivariate_template(reduced_train0, reduced_train1, m)
+# multivariate_misclassification(mu_train0, mu_train1, sigma_train0, sigma_train1, reduced_test0, reduced_test1)
